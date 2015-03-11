@@ -1,0 +1,185 @@
+import java.awt.*;
+import java.awt.event.*;
+import java.awt.image.*;
+import java.io.IOException;
+import java.net.URL;
+
+import javax.imageio.ImageIO;
+import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
+
+public class EvolutionApplet extends JApplet {
+    private JLabel targetDisplayLabel;
+    private JLabel bestDisplayLabel;
+    private JLabel evolvingDisplayLabel;
+   
+    private JButton getImageButton;
+    private JButton toggleStartButton;
+    
+    private JPanel optionPanel;
+    private JSpinner mutationSpinner;
+    
+    private JFileChooser fc;
+    private BufferedImage targetImage;
+    
+    private CircleIndividual bestImage;
+    private CircleIndividual evolvingImage;
+    private double bestFitness = 0;
+    
+    private boolean isStart = false;
+    
+    Thread t;
+    
+    @Override
+    public void init() {
+        getContentPane().setBackground(new Color(220, 220, 230));
+        
+        fc = new JFileChooser();
+        fc.setFileFilter(new FileNameExtensionFilter("Image Files", "jpg", "png", "gif", "jpeg"));
+        
+        try {
+            targetImage = ImageIO.read(new URL(getCodeBase(), "eclipse-logo.png"));
+        } catch (IOException ex) {
+            //This shouldn't happen
+        }
+        
+        for(int x = 0; x < targetImage.getWidth(); x++) {
+            for(int y = 0; y < targetImage.getWidth(); y++) {
+            	int a = targetImage.getRGB(x,  y) & (0xFF);
+            	int r = targetImage.getRGB(x,  y) & (0xFF);
+            	int g = targetImage.getRGB(x,  y) & (0xFF);
+            	int b = targetImage.getRGB(x,  y) & (0xFF);
+            	targetImage.setRGB(x, y, (0xFF << 24) | (r << 16) | (g << 8) | b);
+            }
+        }
+        
+        evolvingImage = new CircleIndividual(targetImage.getWidth(), targetImage.getHeight(), 512);
+        bestImage = evolvingImage;
+        
+        setLayout(new GridBagLayout());
+        GridBagConstraints c = new GridBagConstraints();
+        
+        //Create target image display label
+        targetDisplayLabel = new JLabel();
+        targetDisplayLabel.setIcon(new ImageIcon(targetImage));
+        targetDisplayLabel.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
+        c.fill = GridBagConstraints.NONE;
+        c.anchor = GridBagConstraints.PAGE_START;
+        c.gridx = 0;
+        c.gridy = 0;
+        c.gridwidth = 1;
+        c.gridheight = 1;
+        c.weightx = 0.5;
+        add(targetDisplayLabel, c);
+        
+        //Create best individual display label
+        bestDisplayLabel = new JLabel();
+        bestDisplayLabel.setIcon(new ImageIcon(bestImage.getImage()));
+        bestDisplayLabel.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
+        c.fill = GridBagConstraints.NONE;
+        c.anchor = GridBagConstraints.PAGE_START;
+        c.gridx = 1;
+        c.gridy = 0;
+        c.gridwidth = 1;
+        c.gridheight = 1;
+        c.weightx = 0.5;
+        add(bestDisplayLabel, c);
+        
+        //create evolving individual display label
+        evolvingDisplayLabel = new JLabel();
+        evolvingDisplayLabel.setIcon(new ImageIcon(evolvingImage.getImage()));
+        evolvingDisplayLabel.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
+        c.fill = GridBagConstraints.NONE;
+        c.anchor = GridBagConstraints.PAGE_START;
+        c.gridx = 2;
+        c.gridy = 0;
+        c.gridwidth = 1;
+        c.gridheight = 1;
+        c.weightx = 0.5;
+        add(evolvingDisplayLabel, c);
+        
+        //create get image button
+        getImageButton = new JButton();
+        getImageButton.setText("Select a new image");
+        getImageButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                isStart = false;
+                toggleStartButton.setText("Resume");
+                
+                int returnVal = fc.showOpenDialog(EvolutionApplet.this);
+                
+                if(returnVal == JFileChooser.APPROVE_OPTION) {
+                    try {
+                        targetImage = ImageIO.read(fc.getSelectedFile());
+                        targetDisplayLabel.setIcon(new ImageIcon(targetImage));
+                    } catch (IOException ex) {
+                        //This still shouldn't happen
+                    }
+                    toggleStartButton.setText("Start");
+                    evolvingImage = new CircleIndividual(targetImage.getWidth(), targetImage.getHeight(), 200);
+                    evolvingDisplayLabel.setIcon(new ImageIcon(evolvingImage.getImage()));
+                    bestImage = evolvingImage;
+                    bestDisplayLabel.setIcon(new ImageIcon(bestImage.getImage()));
+                    bestFitness = bestImage.calcFitness(targetImage);
+                }
+            }
+        });
+        c.fill = GridBagConstraints.HORIZONTAL;
+        c.anchor = GridBagConstraints.LAST_LINE_START;
+        c.gridx = 0;
+        c.gridy = 1;
+        c.gridwidth = 1;
+        c.gridheight = 1;
+        c.weightx = 0.5;
+        add(getImageButton, c);
+        
+        //create start/pause button
+        toggleStartButton = new JButton();
+        toggleStartButton.setText("Start");
+        toggleStartButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                isStart = !isStart;
+                toggleStartButton.setText((isStart) ? "Pause" : "Resume");
+            }
+        });
+        c.fill = GridBagConstraints.HORIZONTAL;
+        c.anchor = GridBagConstraints.LAST_LINE_START;
+        c.gridx = 1;
+        c.gridy = 1;
+        c.gridwidth = 1;
+        c.gridheight = 1;
+        c.weightx = 0.5;
+        add(toggleStartButton, c);
+        
+        //run 4ever
+        t = new Thread(new Runnable() {
+            @Override
+            public void run() {
+               for (;;) {
+                   if (isStart) {
+                        update();
+                    }
+                   try {
+                       Thread.sleep(0);
+                   } catch (InterruptedException ex) {
+                       
+                   }
+                }
+            }
+        });
+        t.start();
+    }
+    
+    public void update() {
+        evolvingImage = new CircleIndividual(bestImage, 0.005);
+        evolvingDisplayLabel.setIcon(new ImageIcon(evolvingImage.getImage()));
+        double thisFitness = evolvingImage.calcFitness(targetImage);
+        if(thisFitness > bestFitness) {
+            bestImage = evolvingImage;
+            bestFitness = thisFitness;
+            bestDisplayLabel.setIcon(new ImageIcon(bestImage.getImage()));
+        }
+    }
+}
