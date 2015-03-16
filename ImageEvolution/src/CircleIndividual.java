@@ -2,9 +2,10 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.Collections;
 
 public class CircleIndividual extends Individual{
-    private ArrayList<Integer> DNA;
+    private ArrayList<Circle> DNA;
     
     /**
      * GENOTYPE LAYOUT:
@@ -25,67 +26,64 @@ public class CircleIndividual extends Individual{
         
         image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         
-        for(int x = 0; x < image.getWidth(); x++) {
-            for(int y = 0; y < image.getWidth(); y++) {
-                image.setRGB(x, y, Color.WHITE.getRGB());
-            }
-        }
-        
         for(int i = 0; i < circles; i++) {
-            DNA.add(width / 2);
-            DNA.add(height / 2);
-            DNA.add(10);
-            DNA.add(128);
-            DNA.add(128);
-            DNA.add(128);
-            DNA.add(0);
+        	DNA.add(new Circle((int)(Math.random() * width), (int)(Math.random() * height), Math.random(), (int)(Math.random() * 50),
+        			           (int)(Math.random() * 256), (int)(Math.random() * 256), (int)(Math.random() * 256), 0));
         }
         
+        Collections.sort(DNA);
         drawImage();
     }
     
     public CircleIndividual(CircleIndividual parent, double mutationRate) {
-        ArrayList<Integer> parentDNA = parent.getDNA();
-        
-        circles = parentDNA.size() / 7;
-        DNA = (ArrayList<Integer>)parentDNA.clone();
+    	ArrayList<Circle> parentDNA = parent.getDNA();
+    	
+        circles = parentDNA.size();
+        DNA = new ArrayList();
         
         image = new BufferedImage(parent.getImage().getWidth(), parent.getImage().getHeight(), BufferedImage.TYPE_INT_RGB);
         
-        for(int x = 0; x < image.getWidth(); x++) {
-            for(int y = 0; y < image.getWidth(); y++) {
-                image.setRGB(x, y, Color.WHITE.getRGB());
-            }
+        for(int i = 0; i < circles; i++) {
+        	Circle pc = parentDNA.get(i);
+        	DNA.add(new Circle(pc.x, pc.y, pc.z, pc.radius, pc.r, pc.g, pc.b, pc.a));
+        	Circle c = DNA.get(i);
+        	if(Math.random() < mutationRate) {
+        		double r = Math.random();
+            	
+            	if(r < 0.2){
+                    c.x = (int)mutateValue(c.x, 50, 0, image.getWidth());
+                    c.y = (int)mutateValue(c.y, 50, 0, image.getHeight());    
+                } else if(r < 0.3) {
+                	c.z = mutateValue(c.z, 0.5, 0, 1);
+                } else if(r < 0.5) {
+                	c.radius = (int)mutateValue(c.radius, 10, 1, 50);
+                } else if(r < 0.75) {
+                	c.r = (int)mutateValue(c.r, 100, 0, 255);
+                  	c.g = (int)mutateValue(c.g, 100, 0, 255);
+                    c.b = (int)mutateValue(c.b, 100, 0, 255);
+                } else {
+                    c.a = (int)mutateValue(c.a, 30, 0, 255);
+                }
+        	}
         }
         
-        for(int i = 0; i < circles * 7; i += 7) {
-            if(Math.random() < mutationRate){
-                DNA.set(i, mutateValue(DNA.get(i), 50, 0, image.getWidth()));
-                DNA.set(i + 1, mutateValue(DNA.get(i + 1), 50, 0, image.getHeight()));
-            }
-            if(Math.random() < mutationRate) DNA.set(i + 2, mutateValue(DNA.get(i + 2), 10, 1, 50));
-            if(Math.random() < mutationRate) DNA.set(i + 3, mutateValue(DNA.get(i + 3), 50, 0, 255));
-            if(Math.random() < mutationRate) DNA.set(i + 4, mutateValue(DNA.get(i + 4), 50, 0, 255));
-            if(Math.random() < mutationRate) DNA.set(i + 5, mutateValue(DNA.get(i + 5), 50, 0, 255));
-            if(Math.random() < mutationRate) DNA.set(i + 6, mutateValue(DNA.get(i + 6), 50, 0, 255));
-        }
-        
+        Collections.sort(DNA);
         drawImage();
     }
     
     private void drawImage() {
         Graphics2D g2d = image.createGraphics();
         
-        for(int i = 0; i < circles * 7; i += 7) {
-            int radius = DNA.get(i + 2);
-            int x = DNA.get(i) - radius;
-            int y = DNA.get(i + 1) - radius;
-            int r = DNA.get(i + 3);
-            int g = DNA.get(i + 4);
-            int b = DNA.get(i + 5);
-            int a = DNA.get(i + 6);
-            g2d.setColor(new Color(r, g, b, a));
-            g2d.fillOval(x, y, radius * 2, radius * 2);
+        for(int x = 0; x < image.getWidth(); x++) {
+            for(int y = 0; y < image.getHeight(); y++) {
+                image.setRGB(x, y, Color.WHITE.getRGB());
+            }
+        }
+        
+        for(int i = 0; i < circles; i++) {
+        	Circle c = DNA.get(i);
+            g2d.setColor(new Color(c.r, c.g, c.b, c.a));
+            g2d.fillOval(c.x - c.radius, c.y - c.radius, c.radius * 2, c.radius * 2);
         }
     }
     

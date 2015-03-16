@@ -45,15 +45,18 @@ public class EvolutionApplet extends JApplet {
         
         for(int x = 0; x < targetImage.getWidth(); x++) {
             for(int y = 0; y < targetImage.getWidth(); y++) {
-            	int a = targetImage.getRGB(x,  y) & (0xFF << 24);
-            	int r = targetImage.getRGB(x,  y) & (0xFF << 16) + a;
-            	int g = targetImage.getRGB(x,  y) & (0xFF << 8) + a;
-            	int b = targetImage.getRGB(x,  y) & (0xFF) + a;
-            	targetImage.setRGB(x, y, (0xFF << 24) | (r) | (g) | b);
+            	if((targetImage.getRGB(x, y) >> 24 & 0xFF) < 0xFF) {
+            		targetImage.setRGB(x,  y, 0xFFFFFFFF);
+            	}
+//            	int a = 0xFF - ((targetImage.getRGB(x,  y) >> 24) & 0xFF);
+//            	int r = (targetImage.getRGB(x,  y) >> 16) & 0xFF + a;
+//            	int g = (targetImage.getRGB(x,  y) >> 8) & 0xFF + a;
+//            	int b = targetImage.getRGB(x,  y) & 0xFF + a;
+//            	targetImage.setRGB(x, y, (0xFF << 24) | (r << 16) | (g << 8) | b);
             }
         }
         
-        evolvingImage = new CircleIndividual(targetImage.getWidth(), targetImage.getHeight(), 512);
+        evolvingImage = new CircleIndividual(targetImage.getWidth(), targetImage.getHeight(), 256);
         bestImage = evolvingImage;
         
         setLayout(new GridBagLayout());
@@ -117,7 +120,7 @@ public class EvolutionApplet extends JApplet {
                         //This still shouldn't happen
                     }
                     toggleStartButton.setText("Start");
-                    evolvingImage = new CircleIndividual(targetImage.getWidth(), targetImage.getHeight(), 200);
+                    evolvingImage = new CircleIndividual(targetImage.getWidth(), targetImage.getHeight(), 512);
                     evolvingDisplayLabel.setIcon(new ImageIcon(evolvingImage.getImage()));
                     bestImage = evolvingImage;
                     bestDisplayLabel.setIcon(new ImageIcon(bestImage.getImage()));
@@ -173,7 +176,7 @@ public class EvolutionApplet extends JApplet {
     }
     
     public void update() {
-        evolvingImage = new CircleIndividual(bestImage, 0.005);
+        evolvingImage = new CircleIndividual(bestImage, 0.02);
         evolvingDisplayLabel.setIcon(new ImageIcon(evolvingImage.getImage()));
         double thisFitness = evolvingImage.calcFitness(targetImage);
         if(thisFitness > bestFitness) {
