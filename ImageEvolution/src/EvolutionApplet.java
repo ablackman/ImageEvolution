@@ -3,6 +3,7 @@ import java.awt.event.*;
 import java.awt.image.*;
 import java.io.IOException;
 import java.net.URL;
+
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -21,7 +22,10 @@ public class EvolutionApplet extends JApplet {
     private JLabel improvementLabel;
    
     private JButton getImageButton;
-    private JButton toggleStartButton;
+    private JButton pauseButton;
+    private JButton saveImageButton;
+    private JSpinner mutationSpinner;
+    private JSpinner circleCountSpinner;
     
     private JFileChooser fc;
     private BufferedImage targetImage;
@@ -36,7 +40,7 @@ public class EvolutionApplet extends JApplet {
     Font titleFont = new Font("Sans Serif", Font.BOLD, 28);
     Font statFont = new Font("Sans Serif", Font.BOLD, 24);
     
-    private boolean isStart = false;
+    private boolean pause = true;
     
     SpringLayout spring = new SpringLayout();
     
@@ -128,15 +132,15 @@ public class EvolutionApplet extends JApplet {
         spring.putConstraint(SpringLayout.WEST, evolvingDisplayLabel, 0,
                              SpringLayout.WEST, evolvingTitle);
         
-        //create stats
+        //create stat labels
         fitnessLabel = new JLabel();
         fitnessLabel.setText("Fitness: 0%");
         fitnessLabel.setFont(statFont);
         add(fitnessLabel);
+        spring.putConstraint(SpringLayout.NORTH, fitnessLabel, 0,
+                             SpringLayout.NORTH, evolvingDisplayLabel);
         spring.putConstraint(SpringLayout.WEST, fitnessLabel, 5,
-                             SpringLayout.WEST, this);
-        spring.putConstraint(SpringLayout.NORTH, fitnessLabel, 5,
-                             SpringLayout.SOUTH, targetDisplayLabel);
+                             SpringLayout.EAST, evolvingDisplayLabel);
         
         generationLabel = new JLabel();
         generationLabel.setText("Generations: 0");
@@ -157,31 +161,33 @@ public class EvolutionApplet extends JApplet {
                              SpringLayout.WEST, generationLabel);
         
         //create start/pause button
-        toggleStartButton = new JButton();
-        toggleStartButton.setText("Start");
-        toggleStartButton.setFont(titleFont);
-        toggleStartButton.addActionListener(new ActionListener() {
+        pauseButton = new JButton();
+        pauseButton.setText("Start");
+        pauseButton.setFont(new Font("Sans Serif", Font.BOLD, 42));
+        pauseButton.setPreferredSize(new Dimension(200, 75));
+        pauseButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                isStart = !isStart;
-                toggleStartButton.setText((isStart) ? "Pause" : "Resume");
+                pause = !pause;
+                pauseButton.setText((pause) ? "Resume" : "Pause");
             }
         });
-        add(toggleStartButton);
-        spring.putConstraint(SpringLayout.NORTH, toggleStartButton, 5,
-                             SpringLayout.SOUTH, targetDisplayLabel);
-        spring.putConstraint(SpringLayout.WEST, toggleStartButton, 0,
-                             SpringLayout.WEST, bestDisplayLabel);
+        add(pauseButton);
+        spring.putConstraint(SpringLayout.SOUTH, pauseButton, 0,
+                             SpringLayout.SOUTH, evolvingDisplayLabel);
+        spring.putConstraint(SpringLayout.WEST, pauseButton, 5,
+                             SpringLayout.EAST, evolvingDisplayLabel);
 
       //create get image button
         getImageButton = new JButton();
         getImageButton.setText("Select a new image");
-        getImageButton.setFont(titleFont);
+        getImageButton.setFont(new Font("Sans Serif", Font.PLAIN, 18));
+        getImageButton.setPreferredSize(new Dimension(200, 25));
         getImageButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                isStart = false;
-                toggleStartButton.setText("Resume");
+                pause = true;
+                pauseButton.setText("Resume");
                 
                 int returnVal = fc.showOpenDialog(EvolutionApplet.this);
                 
@@ -192,27 +198,62 @@ public class EvolutionApplet extends JApplet {
                     } catch (IOException ex) {
                         //This still shouldn't happen
                     }
-                    toggleStartButton.setText("Start");
+                    pauseButton.setText("Start");
                     evolvingImage = new CircleIndividual(targetImage.getWidth(), targetImage.getHeight(), 512);
                     evolvingDisplayLabel.setIcon(new ImageIcon(evolvingImage.getImage()));
                     bestImage = evolvingImage;
                     bestDisplayLabel.setIcon(new ImageIcon(bestImage.getImage()));
+//                    getImageButton.setPreferredSize(new Dimension(targetImage.getWidth(), 25));
+//                    saveImageButton.setPreferredSize(new Dimension(targ))
                     bestFitness = bestImage.calcFitness(targetImage);
                 }
             }
         });
         add(getImageButton);
         spring.putConstraint(SpringLayout.NORTH, getImageButton, 5,
-                             SpringLayout.SOUTH, toggleStartButton);
+                             SpringLayout.SOUTH, targetDisplayLabel);
         spring.putConstraint(SpringLayout.WEST, getImageButton, 0,
-                             SpringLayout.WEST, toggleStartButton);
+                             SpringLayout.WEST, targetDisplayLabel);
+        spring.putConstraint(SpringLayout.EAST, getImageButton, 0,
+                             SpringLayout.EAST, targetDisplayLabel);
+        
+        //create save image button
+        saveImageButton = new JButton();
+        saveImageButton.setText("Save this image");
+        saveImageButton.setFont(new Font("Sans Serif", Font.PLAIN, 18));
+        saveImageButton.setPreferredSize(new Dimension(200, 25));
+        saveImageButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                pause = true;
+                pauseButton.setText("Resume");
+                
+                int returnVal = fc.showSaveDialog(EvolutionApplet.this);
+                
+                if(returnVal == JFileChooser.APPROVE_OPTION){
+                    try {
+                        ImageIO.write(bestImage.getImage(), "JPG", fc.getSelectedFile());
+                    } catch (IOException ex) {
+                        //Still not happening
+                    }
+                }
+            }
+        });
+        add(saveImageButton);
+        
+        spring.putConstraint(SpringLayout.NORTH, saveImageButton, 5,
+                             SpringLayout.SOUTH, bestDisplayLabel);
+        spring.putConstraint(SpringLayout.WEST, saveImageButton, 0,
+                             SpringLayout.WEST, bestDisplayLabel);
+        spring.putConstraint(SpringLayout.EAST, saveImageButton, 0,
+                             SpringLayout.EAST, bestDisplayLabel);
         
         //run 4ever
         t = new Thread(new Runnable() {
             @Override
             public void run() {
                for (;;) {
-                   if (isStart) {
+                   if (!pause) {
                         update();
                     }
                    try {
