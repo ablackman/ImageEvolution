@@ -24,8 +24,14 @@ public class EvolutionApplet extends JApplet {
     private JButton getImageButton;
     private JButton pauseButton;
     private JButton saveImageButton;
+    
     private JSpinner mutationSpinner;
-    private JSpinner circleCountSpinner;
+    private JSpinner circleSpinner;
+    private JLabel mutationSpinnerTitle;
+    private JLabel circleSpinnerTitle;
+    
+    private double mutationRate= 0.02;
+    private int circleCount = 200;
     
     private JFileChooser fc;
     private BufferedImage targetImage;
@@ -37,12 +43,13 @@ public class EvolutionApplet extends JApplet {
     private int improvements = 0;
     private double bestFitness = 0;
     
-    Font titleFont = new Font("Sans Serif", Font.BOLD, 28);
-    Font statFont = new Font("Sans Serif", Font.BOLD, 24);
+    private Font titleFont = new Font("Sans Serif", Font.BOLD, 28);
+    private Font statFont = new Font("Sans Serif", Font.BOLD, 24);
+    private Font optionFont = new Font("Sans Serif", Font.PLAIN, 18);
     
     private boolean pause = true;
     
-    SpringLayout spring = new SpringLayout();
+    private SpringLayout spring = new SpringLayout();
     
     private Thread t;
     
@@ -67,7 +74,7 @@ public class EvolutionApplet extends JApplet {
             }
         }
         
-        evolvingImage = new CircleIndividual(targetImage.getWidth(), targetImage.getHeight(), 256);
+        evolvingImage = new CircleIndividual(targetImage.getWidth(), targetImage.getHeight(), circleCount);
         bestImage = evolvingImage;
         
         setLayout(spring);
@@ -181,7 +188,7 @@ public class EvolutionApplet extends JApplet {
       //create get image button
         getImageButton = new JButton();
         getImageButton.setText("Select a new image");
-        getImageButton.setFont(new Font("Sans Serif", Font.PLAIN, 18));
+        getImageButton.setFont(optionFont);
         getImageButton.setPreferredSize(new Dimension(200, 25));
         getImageButton.addActionListener(new ActionListener() {
             @Override
@@ -198,13 +205,20 @@ public class EvolutionApplet extends JApplet {
                     } catch (IOException ex) {
                         //This still shouldn't happen
                     }
+                    
+                    for(int x = 0; x < targetImage.getWidth(); x++) {
+                        for(int y = 0; y < targetImage.getWidth(); y++) {
+                            if((targetImage.getRGB(x, y) >> 24 & 0xFF) < 0xFF) {
+                                    targetImage.setRGB(x,  y, 0xFFFFFFFF);
+                            }
+                        }
+                    }
+                    
                     pauseButton.setText("Start");
                     evolvingImage = new CircleIndividual(targetImage.getWidth(), targetImage.getHeight(), 512);
                     evolvingDisplayLabel.setIcon(new ImageIcon(evolvingImage.getImage()));
                     bestImage = evolvingImage;
                     bestDisplayLabel.setIcon(new ImageIcon(bestImage.getImage()));
-//                    getImageButton.setPreferredSize(new Dimension(targetImage.getWidth(), 25));
-//                    saveImageButton.setPreferredSize(new Dimension(targ))
                     bestFitness = bestImage.calcFitness(targetImage);
                 }
             }
@@ -220,7 +234,7 @@ public class EvolutionApplet extends JApplet {
         //create save image button
         saveImageButton = new JButton();
         saveImageButton.setText("Save this image");
-        saveImageButton.setFont(new Font("Sans Serif", Font.PLAIN, 18));
+        saveImageButton.setFont(optionFont);
         saveImageButton.setPreferredSize(new Dimension(200, 25));
         saveImageButton.addActionListener(new ActionListener() {
             @Override
@@ -248,6 +262,46 @@ public class EvolutionApplet extends JApplet {
         spring.putConstraint(SpringLayout.EAST, saveImageButton, 0,
                              SpringLayout.EAST, bestDisplayLabel);
         
+        mutationSpinnerTitle = new JLabel();
+        mutationSpinnerTitle.setText("Mutation Rate:");
+        mutationSpinnerTitle.setFont(statFont);
+        add(mutationSpinnerTitle);
+        
+        spring.putConstraint(SpringLayout.NORTH, mutationSpinnerTitle, 5,
+                             SpringLayout.SOUTH, getImageButton);
+        spring.putConstraint(SpringLayout.WEST, mutationSpinnerTitle, 0,
+                             SpringLayout.WEST, getImageButton);
+        
+        mutationSpinner = new JSpinner(new SpinnerNumberModel(2, 1, 100, 0.1));
+        mutationSpinner.setFont(statFont);
+        add(mutationSpinner);
+        
+        spring.putConstraint(SpringLayout.NORTH, mutationSpinner, 0,
+                             SpringLayout.NORTH, mutationSpinnerTitle);
+        spring.putConstraint(SpringLayout.WEST, mutationSpinner, 2,
+                             SpringLayout.EAST, mutationSpinnerTitle);
+        
+        circleSpinnerTitle = new JLabel();
+        circleSpinnerTitle.setText("Circles:");
+        circleSpinnerTitle.setFont(statFont);
+        add(circleSpinnerTitle);
+        
+        spring.putConstraint(SpringLayout.NORTH, circleSpinnerTitle, 5,
+                             SpringLayout.SOUTH, mutationSpinnerTitle);
+        spring.putConstraint(SpringLayout.WEST, circleSpinnerTitle, 0,
+                             SpringLayout.WEST, mutationSpinnerTitle);
+        
+        circleSpinner = new JSpinner(new SpinnerNumberModel(200, 1, 1000, 1));
+        circleSpinner.setFont(statFont);
+        add(circleSpinner);
+        
+        spring.putConstraint(SpringLayout.NORTH, circleSpinner, 0,
+                             SpringLayout.NORTH, circleSpinnerTitle);
+        spring.putConstraint(SpringLayout.WEST, circleSpinner, 0,
+                             SpringLayout.WEST, mutationSpinner);
+        
+        
+        
         //run 4ever
         t = new Thread(new Runnable() {
             @Override
@@ -270,7 +324,9 @@ public class EvolutionApplet extends JApplet {
     public void update() {
     	generation++;
     	generationLabel.setText("Generation: " + generation);
-        evolvingImage = new CircleIndividual(bestImage, 0.02);
+    	mutationRate = (double)(mutationSpinner.getValue()) / 100;
+    	circleCount = (int) (circleSpinner.getValue());
+        evolvingImage = new CircleIndividual(bestImage, mutationRate, circleCount);
         evolvingDisplayLabel.setIcon(new ImageIcon(evolvingImage.getImage()));
         double thisFitness = evolvingImage.calcFitness(targetImage);
         if(thisFitness > bestFitness) {

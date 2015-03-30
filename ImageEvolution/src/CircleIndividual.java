@@ -27,23 +27,26 @@ public class CircleIndividual extends Individual{
         image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         
         for(int i = 0; i < circles; i++) {
-        	DNA.add(new Circle((int)(Math.random() * width), (int)(Math.random() * height), Math.random(), (int)(Math.random() * 50),
-        			           (int)(Math.random() * 256), (int)(Math.random() * 256), (int)(Math.random() * 256), 0));
+        	DNA.add(new Circle((int)(Math.random() * width), (int)(Math.random() * height), Math.random(),
+        	                   (int)(Math.random() * 50), (int)(Math.random() * 256), (int)(Math.random() * 256),
+        	                   (int)(Math.random() * 256), 0));
         }
         
         Collections.sort(DNA);
         drawImage();
     }
     
-    public CircleIndividual(CircleIndividual parent, double mutationRate) {
+    public CircleIndividual(CircleIndividual parent, double mutationRate, int circleCount) {
     	ArrayList<Circle> parentDNA = parent.getDNA();
     	
-        circles = parentDNA.size();
-        DNA = new ArrayList();
+        circles = circleCount;
+    	DNA = new ArrayList();
         
         image = new BufferedImage(parent.getImage().getWidth(), parent.getImage().getHeight(), BufferedImage.TYPE_INT_RGB);
         
-        for(int i = 0; i < circles; i++) {
+        int i = 0;
+        
+        for(; i < circles && i < parentDNA.size(); i++) {
         	Circle pc = parentDNA.get(i);
         	DNA.add(new Circle(pc.x, pc.y, pc.z, pc.radius, pc.r, pc.g, pc.b, pc.a));
         	Circle c = DNA.get(i);
@@ -65,6 +68,12 @@ public class CircleIndividual extends Individual{
                     c.a = (int)mutateValue(c.a, 30, 0, 255);
                 }
         	}
+        }
+        
+        for(; i < circles; i++) {
+            DNA.add(new Circle((int)(Math.random() * image.getWidth()), (int)(Math.random() * image.getHeight()), Math.random(),
+                    (int)(Math.random() * 50), (int)(Math.random() * 256), (int)(Math.random() * 256),
+                    (int)(Math.random() * 256), 0));
         }
         
         Collections.sort(DNA);
