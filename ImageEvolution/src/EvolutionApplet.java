@@ -1,11 +1,24 @@
-import java.awt.*;
-import java.awt.event.*;
-import java.awt.image.*;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 
 import javax.imageio.ImageIO;
-import javax.swing.*;
+import javax.swing.BorderFactory;
+import javax.swing.ImageIcon;
+import javax.swing.JApplet;
+import javax.swing.JButton;
+import javax.swing.JFileChooser;
+import javax.swing.JLabel;
+import javax.swing.JSpinner;
+import javax.swing.SpinnerNumberModel;
+import javax.swing.SpringLayout;
+import javax.swing.Timer;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 public class EvolutionApplet extends JApplet {
@@ -29,6 +42,7 @@ public class EvolutionApplet extends JApplet {
     private JSpinner circleSpinner;
     private JLabel mutationSpinnerTitle;
     private JLabel circleSpinnerTitle;
+    private JLabel percentLabel;
     
     private double mutationRate= 0.02;
     private int circleCount = 200;
@@ -36,8 +50,8 @@ public class EvolutionApplet extends JApplet {
     private JFileChooser fc;
     private BufferedImage targetImage;
     
-    private CircleIndividual bestImage;
-    private CircleIndividual evolvingImage;
+    private Individual bestImage;
+    private Individual evolvingImage;
     
     private int generation = 0;
     private int improvements = 0;
@@ -51,8 +65,6 @@ public class EvolutionApplet extends JApplet {
     
     private SpringLayout spring = new SpringLayout();
     
-    private Thread t;
-    
     @Override
     public void init() {
         getContentPane().setBackground(new Color(220, 220, 230));
@@ -61,20 +73,20 @@ public class EvolutionApplet extends JApplet {
         fc.setFileFilter(new FileNameExtensionFilter("Image Files", "jpg", "png", "gif", "jpeg"));
         
         try {
-            targetImage = ImageIO.read(new URL(getCodeBase(), "eclipse-logo.png"));
+            targetImage = ImageIO.read(new URL("http://i.imgur.com/8xQ0G9v.jpg"));
         } catch (IOException ex) {
             //This shouldn't happen
         }
         
         for(int x = 0; x < targetImage.getWidth(); x++) {
-            for(int y = 0; y < targetImage.getWidth(); y++) {
+            for(int y = 0; y < targetImage.getHeight(); y++) {
             	if((targetImage.getRGB(x, y) >> 24 & 0xFF) < 0xFF) {
             		targetImage.setRGB(x,  y, 0xFFFFFFFF);
             	}
             }
         }
         
-        evolvingImage = new CircleIndividual(targetImage.getWidth(), targetImage.getHeight(), circleCount);
+        evolvingImage = new Individual(targetImage.getWidth(), targetImage.getHeight(), circleCount);
         bestImage = evolvingImage;
         
         setLayout(spring);
@@ -207,7 +219,7 @@ public class EvolutionApplet extends JApplet {
                     }
                     
                     for(int x = 0; x < targetImage.getWidth(); x++) {
-                        for(int y = 0; y < targetImage.getWidth(); y++) {
+                        for(int y = 0; y < targetImage.getHeight(); y++) {
                             if((targetImage.getRGB(x, y) >> 24 & 0xFF) < 0xFF) {
                                     targetImage.setRGB(x,  y, 0xFFFFFFFF);
                             }
@@ -215,7 +227,7 @@ public class EvolutionApplet extends JApplet {
                     }
                     
                     pauseButton.setText("Start");
-                    evolvingImage = new CircleIndividual(targetImage.getWidth(), targetImage.getHeight(), 512);
+                    evolvingImage = new Individual(targetImage.getWidth(), targetImage.getHeight(), 512);
                     evolvingDisplayLabel.setIcon(new ImageIcon(evolvingImage.getImage()));
                     bestImage = evolvingImage;
                     bestDisplayLabel.setIcon(new ImageIcon(bestImage.getImage()));
@@ -246,7 +258,11 @@ public class EvolutionApplet extends JApplet {
                 
                 if(returnVal == JFileChooser.APPROVE_OPTION){
                     try {
-                        ImageIO.write(bestImage.getImage(), "JPG", fc.getSelectedFile());
+                    	String path = fc.getSelectedFile().getAbsolutePath();
+                    	if(!path.endsWith(".jpg")) {
+                    		path += ".jpg";
+                    	}
+                        ImageIO.write(bestImage.getImage(), "PNG", new File(path));
                     } catch (IOException ex) {
                         //Still not happening
                     }
@@ -262,6 +278,7 @@ public class EvolutionApplet extends JApplet {
         spring.putConstraint(SpringLayout.EAST, saveImageButton, 0,
                              SpringLayout.EAST, bestDisplayLabel);
         
+        //create mutation spinner title
         mutationSpinnerTitle = new JLabel();
         mutationSpinnerTitle.setText("Mutation Rate:");
         mutationSpinnerTitle.setFont(statFont);
@@ -272,7 +289,8 @@ public class EvolutionApplet extends JApplet {
         spring.putConstraint(SpringLayout.WEST, mutationSpinnerTitle, 0,
                              SpringLayout.WEST, getImageButton);
         
-        mutationSpinner = new JSpinner(new SpinnerNumberModel(2, 1, 100, 0.1));
+        //create mutation spinner
+        mutationSpinner = new JSpinner(new SpinnerNumberModel(2, 0.1, 100, 0.1));
         mutationSpinner.setFont(statFont);
         add(mutationSpinner);
         
@@ -280,6 +298,17 @@ public class EvolutionApplet extends JApplet {
                              SpringLayout.NORTH, mutationSpinnerTitle);
         spring.putConstraint(SpringLayout.WEST, mutationSpinner, 2,
                              SpringLayout.EAST, mutationSpinnerTitle);
+        
+        //create % sign
+        percentLabel = new JLabel();
+        percentLabel.setText("%");
+        percentLabel.setFont(statFont);
+        add(percentLabel);
+        
+        spring.putConstraint(SpringLayout.NORTH, percentLabel, 0,
+        		             SpringLayout.NORTH, mutationSpinner);
+        spring.putConstraint(SpringLayout.WEST, percentLabel, 5,
+        		             SpringLayout.EAST, mutationSpinner);
         
         circleSpinnerTitle = new JLabel();
         circleSpinnerTitle.setText("Circles:");
@@ -301,37 +330,33 @@ public class EvolutionApplet extends JApplet {
                              SpringLayout.WEST, mutationSpinner);
         
         
-        
-        //run 4ever
-        t = new Thread(new Runnable() {
-            @Override
-            public void run() {
-               for (;;) {
-                   if (!pause) {
-                        update();
-                    }
-                   try {
-                       Thread.sleep(0);
-                   } catch (InterruptedException ex) {
-                       
-                   }
-                }
-            }
+        Timer t = new Timer(0, new ActionListener() {
+        	@Override
+        	public void actionPerformed(ActionEvent e) {
+        		if(!pause) {
+        			update();
+        		}
+        	}
         });
-        t.start();
+        t.setRepeats(true);
+        t.setDelay(50);
+        t.start();       
     }
     
     public void update() {
     	generation++;
     	generationLabel.setText("Generation: " + generation);
+    	
     	mutationRate = (double)(mutationSpinner.getValue()) / 100;
     	circleCount = (int) (circleSpinner.getValue());
-        evolvingImage = new CircleIndividual(bestImage, mutationRate, circleCount);
+        evolvingImage = new Individual(bestImage, mutationRate, circleCount);
         evolvingDisplayLabel.setIcon(new ImageIcon(evolvingImage.getImage()));
+        
         double thisFitness = evolvingImage.calcFitness(targetImage);
         if(thisFitness > bestFitness) {
             improvements++;
             improvementLabel.setText("Improvements:" + improvements);
+            
             bestImage = evolvingImage;
             bestFitness = thisFitness;
             fitnessLabel.setText("Fitness: " + String.format("%.2f", bestFitness) + "%");
